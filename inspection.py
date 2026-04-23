@@ -130,3 +130,47 @@ class BraTSDataset(Dataset):
             image, mask = self.transform(image, mask)
 
         return image, mask
+
+class BalancedBatchSampler(Sampler):
+    def __init__(self, tumor_indices, empty_indices, batch_size):
+        self.tumor = np.array(tumor_indices)
+        self.empty = np.array(empty_indices)
+        self.batch_size = batch_size
+
+        assert batch_size % 2 == 0, "Batch size must be even for 50-50 split"
+
+    def __iter__(self):
+        tumor_half = self.batch_size // 2
+        empty_half = self.batch_size // 2
+
+        tumor_shuffled = np.random.permutation(self.tumor)
+        empty_shuffled = np.random.permutation(self.empty)
+
+        # repeat empty if needed
+        if len(empty_shuffled) < len(tumor_shuffled):
+            empty_shuffled = np.random.choice(
+                self.empty,
+                size=len(tumor_shuffled),
+                replace=True
+            )
+
+        batches = []
+
+        for i in range(0, len(tumor_shuffled), tumor_half):
+            tumor_batch = tumor_shuffled[i:i + tumor_half]
+
+            empty_batch = np.random.choice(
+                self.empty,
+                size=len(tumor_batch),
+                replace=False
+            )
+
+            batch = np.concatenate([tumor_batch, empty_batch])
+            np.random.shuffle(batch)
+
+            batches.append(batch)
+
+        return iter(batches)
+
+    def __len__(self):
+        return len(self.tumor) // (self.batch_size // 2)
