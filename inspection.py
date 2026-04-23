@@ -5,10 +5,13 @@ import h5py
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset
+from torch.utils.data import Sampler
 
 class config:
     CSV_PATH = "/kaggle/input/datasets/awsaf49/brats2020-training-data/BraTS20 Training Metadata.csv"
     TRAIN_DIR = "/kaggle/input/datasets/awsaf49/brats2020-training-data/BraTS2020_training_data"
+    TUMOR_IDX_PATH = "/kaggle/input/datasets/karthikeyaa6274/indices/indices/tumor_indices.pkl"
+    EMPTY_IDX_PATH = "/kaggle/input/datasets/karthikeyaa6274/indices/indices/empty_indices.pkl"
 
 def create_df(config=config):
     return pd.read_csv(config.CSV_PATH)
@@ -133,8 +136,12 @@ class BraTSDataset(Dataset):
 
 class BalancedBatchSampler(Sampler):
     def __init__(self, tumor_indices, empty_indices, batch_size):
-        self.tumor = np.array(tumor_indices)
-        self.empty = np.array(empty_indices)
+        self.tumor = np.array(
+            pickle.load(open(config.TUMOR_IDX_PATH, "rb"))
+        )
+        self.empty = np.array(
+            pickle.load(open(config.EMPTY_IDX_PATH, "rb"))
+        )
         self.batch_size = batch_size
 
         assert batch_size % 2 == 0, "Batch size must be even for 50-50 split"
